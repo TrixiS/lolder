@@ -19,7 +19,6 @@ def is_authorized(authorize_methods):
     вызовет коллбек обработки правила с аргументами:
         self - объект App
         ctx - AuthorizationContext
-        *args, **kwargs - иные аргументы
     Если метода нет в списке, декоратор пропустит его без проверки.
     """
 
@@ -69,7 +68,7 @@ class App(flask.Flask):
         self.db = self.mongo_client[os.environ.get("mongodb_name", "flask_app_db")]
         self.credentials_resolver = CredentialsResolver()
         self.add_url_rule(
-            "/file_storage", "file_storage",
+            "/file_storage/", "file_storage",
             self._file_storage_handler,
             methods=["GET", "POST"]
         )
@@ -79,7 +78,7 @@ class App(flask.Flask):
             methods=["GET"]
         )
         self.add_url_rule(
-            "/register",
+            "/register/",
             "register",
             self._register_handler, methods=["POST"]
         )
@@ -89,6 +88,25 @@ class App(flask.Flask):
             flask.jsonify({"error": error_cls.description, "code": error_cls.code}),
             getattr(error_cls, "http_error_code", error_cls.code)
         )
+
+    def get_file_from_storage(self, file_guid, public=True):
+        return self.db.files.find_one({
+            "_id": file_guid,
+            "public": public
+        })
+
+    def save_file_into_storage(self, owner_login, filename, file_bytes):
+        file_guid = str(uuid.uuid1())
+
+        self.db.files.insert_one({
+            "_id": file_guid,
+            "owner_login": owner_login,
+            "filename": filename,
+            "file_bytes": file_bytes,
+            "public": True
+        })
+
+        return file_guid
 
     def _register_handler(self):
         json = flask.request.get_json()
@@ -111,25 +129,6 @@ class App(flask.Flask):
         })
 
         return "Success"
-
-    def get_file_from_storage(self, file_guid, public=True):
-        return self.db.files.find_one({
-            "_id": file_guid,
-            "public": public
-        })
-
-    def save_file_into_storage(self, owner_login, filename, file_bytes):
-        file_guid = str(uuid.uuid1())
-
-        self.db.files.insert_one({
-            "_id": file_guid,
-            "owner_login": owner_login,
-            "filename": filename,
-            "file_bytes": file_bytes,
-            "public": True
-        })
-
-        return file_guid
 
     @is_authorized(["POST"])
     def _file_storage_handler(self, ctx):
@@ -166,6 +165,23 @@ class App(flask.Flask):
                 "file_guid": self.save_file_into_storage(ctx.login, file.filename, buffer.read())
             })
 
+        return self.error_response(http_exceptions.InternalServerError)
+
     @is_authorized(["GET"])
     def _file_storage_all_handler(self, ctx):
-        pass
+        file_docs = self.db.files.find(
+            {"owner_login": ctx.login},
+            {"filename": 1, "_id": 1}
+        )
+
+        files = []
+
+        for doc in file_docs:
+            files.append({
+                "filename": doc["filename"],
+                "file_guid": doc["_id"]
+            })
+
+        return flask.jsonify({
+            "all_files": files
+        })
