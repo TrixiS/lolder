@@ -7,7 +7,7 @@ from werkzeug import exceptions as http_exceptions
 from pymongo import MongoClient
 from io import BytesIO
 
-from authorization import CredentialsResolver, AuthorizationContext
+from utils.authorization import CredentialsResolver, AuthorizationContext
 
 
 def is_authorized(authorize_methods):
@@ -31,14 +31,14 @@ def is_authorized(authorize_methods):
             headers = flask.request.headers
 
             try:
-                credentials = headers["authorization"]
-                login, password = credentials.split()
+                credentials = str(headers["authorization"])
+                login, password, *_ = credentials.split()
 
                 if not login or not password:
                     raise ValueError
 
-                password_hash_doc = self.db.users.find_one({"login": login})
-                password_hash = password_hash_doc["password"]
+                user_doc = self.db.users.find_one({"login": login})
+                password_hash = user_doc["password"]
             except (KeyError, ValueError, TypeError):
                 return self.error_response(http_exceptions.Unauthorized)
             except Exception as e:
@@ -112,8 +112,8 @@ class App(flask.Flask):
 
         try:
             creds = json["credentials"]
-            login = creds["login"]
-            password = creds["password"]
+            login = str(creds["login"])
+            password = str(creds["password"])
 
             if any(s.issplace() for s in password):
                 raise ValueError()
