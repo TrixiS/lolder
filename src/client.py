@@ -13,6 +13,7 @@ from PyQt5.QtCore import QRegExp
 
 from .utils.paths import get_dir
 from .utils import constants
+from .api_client import ApiClient
 
 
 # TODO: класс для взаимодействия с сервером
@@ -92,11 +93,15 @@ class LoginDialog(QDialog):
         )
 
         self.accepted.connect(self.accepted_event)
-        self.rejected.connect(self.refected_event)
+        self.rejected.connect(self.rejected_event)
         self.login_button.clicked.connect(self.login_clicked)
         self.register_button.clicked.connect(self.register_clicked)
 
-    def refected_event(self):
+    def exec(self, *args, **kwargs):
+        super().exec(*args, **kwargs)
+        return ApiClient(self.login_edit.text(), self.password_edit.text())
+
+    def rejected_event(self):
         sys.exit()
 
     def accepted_event(self):
@@ -114,8 +119,4 @@ class MainWindow(QMainWindow):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         uic.loadUi(str(get_dir(__file__) / "ui/main_window.ui"), self)
-        self.show_login()
-
-    def show_login(self):
-        dialog = LoginDialog(self)
-        dialog.exec()
+        self.api_client = None
