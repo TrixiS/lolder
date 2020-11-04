@@ -2,12 +2,15 @@ import flask
 import logging
 import uuid
 import functools
+import string
 
 from werkzeug import exceptions as http_exceptions
 from pymongo import MongoClient
 from io import BytesIO
 
 from utils.authorization import CredentialsResolver, AuthorizationContext
+
+ALLOWED_LOGIN_CHARS = string.ascii_lowercase + string.digits + '_'
 
 
 def is_authorized(authorize_methods):
@@ -120,9 +123,12 @@ class App(flask.Flask):
             login = str(creds["login"])
             password = str(creds["password"])
 
+            if any(s not in ALLOWED_LOGIN_CHARS for s in login):
+                raise ValueError()
+
             if any(s.isspace() for s in password):
                 raise ValueError()
-        except Exception as e:
+        except Exception:
             return self.error_response(http_exceptions.BadRequest)
 
         login_doc = self.db.users.find_one({"login": login})

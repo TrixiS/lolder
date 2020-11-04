@@ -51,7 +51,7 @@ class LoginDialog(QDialog):
         self.login_button.resize(self.register_button.size())
 
         self.login_edit.setValidator(QRegExpValidator(
-            QRegExp("[a-zA-Z]*", False)
+            QRegExp("[a-zA-Z0-9_]*", False)
         ))
         self.password_edit.setValidator(QRegExpValidator(
             QRegExp("[^\s]*", False)
