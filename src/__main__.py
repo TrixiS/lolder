@@ -1,9 +1,8 @@
 import os
 import logging
 
-from pathlib import Path
 from server import App
-from paths import get_dir
+from utils.paths import get_dir
 
 logging.basicConfig(
     filename=str(get_dir(__file__) / "../logs.log"),
