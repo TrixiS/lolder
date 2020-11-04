@@ -1,2 +1,2 @@
 # lolder
-Toy file storage service. Yandex luceym project
+Client-server file storage service. (Toy YL project)
