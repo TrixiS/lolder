@@ -1,4 +1,3 @@
-import os
 import flask
 import logging
 import uuid
@@ -62,10 +61,10 @@ class App(flask.Flask):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.mongo_client = MongoClient(
-            os.environ.get("mongodb_host", "localhost"),
-            int(os.environ.get("mongodb_port", 27017))
+            self.config.get("MONGODB_HOST", "localhost"),
+            self.config.get("MONGODB_PORT", 27017)
         )
-        self.db = self.mongo_client[os.environ.get("mongodb_name", "flask_app_db")]
+        self.db = self.mongo_client[self.config.get("MONGODB_NAME", "flask_app_db")]
         self.credentials_resolver = CredentialsResolver()
         self.add_url_rule(
             "/file_storage/", "file_storage",
@@ -115,6 +114,9 @@ class App(flask.Flask):
             creds = json["credentials"]
             login = creds["login"]
             password = creds["password"]
+
+            if any(s.issplace() for s in password):
+                raise ValueError()
         except Exception:
             return self.error_response(http_exceptions.BadRequest)
 
@@ -174,14 +176,11 @@ class App(flask.Flask):
             {"filename": 1, "_id": 1}
         )
 
-        files = []
-
-        for doc in file_docs:
-            files.append({
-                "filename": doc["filename"],
-                "file_guid": doc["_id"]
-            })
+        files = [{
+            "filename": doc["filename"],
+            "file_guid": doc["_id"]
+        } for doc in file_docs]
 
         return flask.jsonify({
-            "all_files": files
+            "files": files
         })
