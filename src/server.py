@@ -32,14 +32,14 @@ def is_authorized(authorize_methods):
 
             try:
                 credentials = str(headers["authorization"])
-                login, password, *_ = credentials.split()
+                login, password, *_ = credentials.lower().split()
 
                 if not login or not password:
                     raise ValueError
 
                 user_doc = self.db.users.find_one({"login": login})
                 password_hash = user_doc["password"]
-            except (KeyError, ValueError, TypeError):
+            except (KeyError, ValueError, TypeError) as e:
                 return self.error_response(http_exceptions.Unauthorized)
             except Exception as e:
                 logging.error(f"Client registration error\n{str(e)}")
@@ -72,14 +72,19 @@ class App(flask.Flask):
             methods=["GET", "POST"]
         )
         self.add_url_rule(
-            "/file_storage/all", "file_storage/all",
+            "/file_storage/all/", "file_storage/all",
             self._file_storage_all_handler,
             methods=["GET"]
         )
         self.add_url_rule(
-            "/register/",
-            "register",
-            self._register_handler, methods=["POST"]
+            "/register/", "register",
+            self._register_handler,
+            methods=["POST"]
+        )
+        self.add_url_rule(
+            "/register/check/", "register/check",
+            self._register_check_handler,
+            methods=["GET"]
         )
 
     def error_response(self, error_cls):
@@ -115,9 +120,9 @@ class App(flask.Flask):
             login = str(creds["login"])
             password = str(creds["password"])
 
-            if any(s.issplace() for s in password):
+            if any(s.isspace() for s in password):
                 raise ValueError()
-        except Exception:
+        except Exception as e:
             return self.error_response(http_exceptions.BadRequest)
 
         login_doc = self.db.users.find_one({"login": login})
@@ -184,3 +189,7 @@ class App(flask.Flask):
         return flask.jsonify({
             "files": files
         })
+
+    @is_authorized(["GET"])
+    def _register_check_handler(self, ctx):
+        return "Success"
