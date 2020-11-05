@@ -1,7 +1,6 @@
 import os
 import requests
 
-# TODO: метод для проверки регистрации
 
 class ApiClient:
 
