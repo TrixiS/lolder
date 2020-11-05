@@ -8,7 +8,7 @@ from werkzeug import exceptions as http_exceptions
 from pymongo import MongoClient
 from io import BytesIO
 
-from utils.authorization import CredentialsResolver, AuthorizationContext
+from .utils.authorization import CredentialsResolver, AuthorizationContext
 
 ALLOWED_LOGIN_CHARS = string.ascii_lowercase + string.digits + '_'
 
