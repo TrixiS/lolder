@@ -2,7 +2,7 @@
 Client-server file storage service. (Toy YL project)
 
 # Запуск
-1. Установите MongoDB
+1. Установите [MongoDB](https://docs.mongodb.com/manual/administration/install-community/)
 2. (Опционально) Создайте виртуальное окружение python3 -m "venv" venv и активируйте его
 3. Установите зависимости pip install -r requirements.txt
 4. Запустите сервер python3 start_server.py
