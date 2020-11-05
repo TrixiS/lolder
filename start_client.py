@@ -9,4 +9,5 @@ window = MainWindow()
 window.show()
 api_client = login_dialog.exec()
 window.api_client = api_client
+window.load_files()
 sys.exit(app.exec())

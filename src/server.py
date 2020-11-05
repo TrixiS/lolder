@@ -72,7 +72,7 @@ class App(flask.Flask):
         self.add_url_rule(
             "/file_storage/", "file_storage",
             self._file_storage_handler,
-            methods=["GET", "POST"]
+            methods=["GET", "POST", "DELETE"]
         )
         self.add_url_rule(
             "/file_storage/all/", "file_storage/all",
@@ -143,7 +143,7 @@ class App(flask.Flask):
 
         return "Success"
 
-    @is_authorized(["POST"])
+    @is_authorized(["POST", "DELETE"])
     def _file_storage_handler(self, ctx):
         if flask.request.method == "GET":
             file_guid = flask.request.args.get("file_guid")
@@ -177,6 +177,22 @@ class App(flask.Flask):
             return flask.jsonify({
                 "file_guid": self.save_file_into_storage(ctx.login, file.filename, buffer.read())
             })
+        elif flask.request.method == "DELETE":
+            try:
+                request_json = flask.request.json
+                files = request_json["files"]
+
+                if not files or not isinstance(files, list):
+                    raise ValueError()
+            except Exception as e:
+                return self.error_response(http_exceptions.BadRequest)
+
+            self.db.files.delete_many({
+                "owner_login": ctx.login,
+                "_id": {"$in": [str(file_guid) for file_guid in files]}
+            })
+
+            return "Success"
 
         return self.error_response(http_exceptions.InternalServerError)
 

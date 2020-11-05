@@ -68,6 +68,13 @@
       </widget>
      </item>
      <item>
+      <widget class="QPushButton" name="upload_button">
+       <property name="text">
+        <string>Загрузить</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QPushButton" name="delete_button">
        <property name="text">
         <string>Удалить</string>
@@ -86,9 +93,9 @@
    <widget class="QWidget" name="horizontalLayoutWidget">
     <property name="geometry">
      <rect>
-      <x>-10</x>
+      <x>0</x>
       <y>0</y>
-      <width>551</width>
+      <width>541</width>
       <height>571</height>
      </rect>
     </property>
@@ -97,12 +104,12 @@
       <enum>QLayout::SetMaximumSize</enum>
      </property>
      <item>
-      <widget class="QTableWidget" name="tableWidget"/>
+      <widget class="QTableWidget" name="table_widget"/>
      </item>
     </layout>
    </widget>
   </widget>
-  <widget class="QStatusBar" name="statusbar">
+  <widget class="QStatusBar" name="statusBar">
    <property name="maximumSize">
     <size>
      <width>810</width>

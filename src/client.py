@@ -1,15 +1,18 @@
 import sys
+import clipboard
 
 from PyQt5 import uic
 from qtwidgets import PasswordEdit
 from PyQt5.QtWidgets import (
     QMainWindow, QDialog,
     QLineEdit, QPushButton,
-    QLabel
+    QLabel, QAbstractItemView,
+    QTableWidgetItem, QFileDialog
 )
 
 from PyQt5.QtGui import QRegExpValidator
-from PyQt5.QtCore import QRegExp
+from PyQt5.QtCore import QRegExp, Qt
+from pathlib import Path
 
 from .utils.paths import get_dir
 from .utils import constants
@@ -38,7 +41,7 @@ class LoginDialog(QDialog):
         self.setFixedSize(constants.LOGIN_WINDOW_WIDTH, constants.LOGIN_WINDOW_HEIGHT)
 
         self.login_label = QLabel(constants.LOGIN_LABEL_TEXT, self)
-        self.status_label = QLabel("Тектовый текст многобукв", self)
+        self.status_label = QLabel(self)
         self.password_label = QLabel(constants.PASSWORD_LABEL_TEXT, self)
         self.login_edit = QLineEdit(self)
         self.password_edit = PasswordEdit(True, self)
@@ -177,4 +180,138 @@ class MainWindow(QMainWindow):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         uic.loadUi(str(get_dir(__file__) / "ui/main_window.ui"), self)
+        self.setWindowTitle(constants.MAIN_WINDOW_TITLE)
         self.api_client = None
+        self.table_widget.setColumnCount(2)
+        self.table_widget.setHorizontalHeaderLabels([constants.FILE_NAME, constants.FILE_GUID])
+        self.table_widget.horizontalHeaderItem(0).setTextAlignment(Qt.AlignCenter)
+        self.table_widget.horizontalHeaderItem(1).setTextAlignment(Qt.AlignCenter)
+        self.table_widget.horizontalHeader().setStretchLastSection(True)
+        self.table_widget.setEditTriggers(QAbstractItemView.NoEditTriggers)
+
+        self.download_button.clicked.connect(self.download_clicked)
+        self.copy_link_button.clicked.connect(self.copy_link_clicked)
+        self.upload_button.clicked.connect(self.upload_clicked)
+        self.delete_button.clicked.connect(self.delete_clicked)
+
+    def load_files(self):
+        all_files_json = self.api_client.req("GET", "file_storage/all").json()
+
+        for i, file in enumerate(all_files_json["files"]):
+            self.table_widget.insertRow(i)
+            self.table_widget.setItem(i, 0, QTableWidgetItem(file["filename"]))
+            self.table_widget.setItem(i, 1, QTableWidgetItem(file["file_guid"]))
+
+    def get_selected_row(self):
+        selected_items = self.table_widget.selectedItems()
+
+        if not selected_items:
+            return
+
+        return self.table_widget.row(selected_items[0])
+
+    def get_selected_file(self):
+        file_row = self.get_selected_row()
+
+        if file_row is None:
+            return None, None
+
+        filename_item = self.table_widget.item(file_row, 0)
+        file_guid_item = self.table_widget.item(file_row, 1)
+        filename = filename_item.text()
+        file_guid = file_guid_item.text()
+
+        return filename, file_guid
+
+    def download_clicked(self):
+        filename, file_guid = self.get_selected_file()
+
+        if not (filename and file_guid):
+            self.statusBar.showMessage(constants.SELECT_FILE)
+            return
+
+        downloads_path = get_dir(__file__) / "../downloads"
+        file_path = downloads_path / filename
+        request_params = {"file_guid": file_guid}
+
+        try:
+            response = self.api_client.req("GET", "file_storage", params=request_params)
+
+            if not downloads_path.exists():
+                downloads_path.mkdir()
+
+            with open(file_path.resolve(), "wb") as f:
+                f.write(response.content)
+        except Exception:
+            self.statusBar.showMessage(constants.DOWNLOAD_ERROR)
+            return
+
+        self.statusBar.showMessage(constants.DOWNLOAD_SUCCESS.format(
+            file_path.name,
+            str(file_path.parent.resolve())
+        ))
+
+    def copy_link_clicked(self):
+        _, file_guid = self.get_selected_file()
+
+        if file_guid is None:
+            self.statusBar.showMessage(constants.SELECT_FILE)
+            return
+
+        clipboard.copy(self.api_client.base_url + "file_storage" + "?file_guid={}".format(
+            file_guid
+        ))
+
+        self.statusBar.showMessage(constants.LINK_SAVED)
+
+    def upload_clicked(self):
+        filepath, _ = QFileDialog.getOpenFileName(
+            self,
+            constants.UPLOAD_FILE,
+            filter=f"{constants.ALL_FILES} (*.*)"
+        )
+
+        if not filepath:
+            self.statusBar.showMessage(constants.SELECT_FILE)
+            return
+
+        file_path = Path(filepath)
+
+        try:
+            file_content = file_path.read_bytes()
+            request_files = {"file": (file_path.name, file_content)}
+            response = self.api_client.req("POST", "file_storage", files=request_files)
+
+            if not response.ok:
+                raise ValueError()
+
+            file_guid = response.json()["file_guid"]
+        except Exception:
+            self.statusBar.showMessage(constants.UPLOAD_ERROR)
+            return
+
+        row_count = self.table_widget.rowCount()
+        self.table_widget.insertRow(row_count)
+        self.table_widget.setItem(row_count, 0, QTableWidgetItem(file_path.name))
+        self.table_widget.setItem(row_count, 1, QTableWidgetItem(file_guid))
+        self.statusBar.showMessage(constants.UPLOAD_SUCCESS.format(file_path.name))
+
+    def delete_clicked(self):
+        filename, file_guid = self.get_selected_file()
+
+        if not file_guid:
+            self.statusBar.showMessage(constants.SELECT_FILE)
+            return
+
+        request_json = {"files": [file_guid]}
+
+        try:
+            if not self.api_client.req("DELETE", "file_storage", json=request_json).ok:
+                raise ValueError()
+        except Exception:
+            self.statusBar.showMessage(constants.DELETE_ERROR)
+            return
+
+        selected_row = self.get_selected_row()
+        self.table_widget.removeRow(selected_row)
+        self.statusBar.showMessage(constants.DELETE_SUCCESS.format(filename))

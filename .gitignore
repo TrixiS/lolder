@@ -1,4 +1,6 @@
 venv
+tests
+downloads
+
 *.log
 *.pyc
-tests
