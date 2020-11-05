@@ -12,3 +12,5 @@ Client-server file storage service. (Toy YL project)
 1. Чтобы установить порт и хост сервера, измените значения os.environ (app_host и app_port)
 2. Чтобы изменить порт, хост и название бд MongoDB для сервера, измените значения MONGODB_HOST, MONGODB_PORT, MONGODB_NAME в конфиге приложения Flask
 3. Чтобы установить адрес сервера для клиента, измените значение os.environ server_address
+
+**По дефолту севрер запустится на 127.0.0.1:8000, а данные для подключения к БД будут взяты эти - localhost, 27017, flask_app_db**
